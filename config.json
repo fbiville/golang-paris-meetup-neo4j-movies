@@ -1,0 +1,5 @@
+{
+  "uri": "neo4j://localhost",
+  "username": "neo4j",
+  "password": "s3cr3t"
+}
