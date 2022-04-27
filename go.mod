@@ -1,5 +1,5 @@
 module github.com/fbiville/golang-paris-meetup-neo4j-movies
 
-go 1.17
+go 1.18
 
 
