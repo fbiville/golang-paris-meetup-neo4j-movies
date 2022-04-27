@@ -1,7 +1,6 @@
 package actors
 
 import (
-	"fmt"
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 )
 
@@ -33,12 +32,68 @@ func NewActorRepository(driver neo4j.Driver) ActorRepository {
 }
 
 func (repo *actorNeo4jRepository) FindOneByName(name string) (*Actor, error) {
-	// TODO
-	return nil, fmt.Errorf("TODO")
+	session := repo.driver.NewSession(neo4j.SessionConfig{
+		BoltLogger: neo4j.ConsoleBoltLogger(),
+	})
+	defer session.Close()
+	actor, err := session.ReadTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		results, err := tx.Run("MATCH (p:Person {name: $name}) RETURN p LIMIT 1",
+			map[string]interface{}{
+				"name": name,
+			})
+		if err != nil {
+			return nil, err
+		}
+		record, err := results.Single()
+		if err != nil {
+			return nil, err
+		}
+		person, _ := record.Get("p")
+		personNode := person.(neo4j.Node)
+		return &Actor{
+			Name:      personNode.Props["name"].(string),
+			BirthYear: personNode.Props["born"].(int64),
+		}, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return actor.(*Actor), nil
 }
 
 func (repo *actorNeo4jRepository) FindShortestPathToKevinBacon(actor string) (
 	[]BaconSlice, error) {
-	// TODO
-	return nil, fmt.Errorf("TODO")
+	session := repo.driver.NewSession(neo4j.SessionConfig{
+		BoltLogger: neo4j.ConsoleBoltLogger(),
+	})
+	defer session.Close()
+	results, err := session.ReadTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		results, err := tx.Run("MATCH (kevin:Person {name: 'Kevin Bacon'})\nMATCH (target:Person {name: $name})\nRETURN shortestPath((kevin)-[*0..6]-(target)) AS path",
+			map[string]interface{}{
+				"name": actor,
+			})
+		record, err := results.Single()
+		if err != nil {
+			return nil, err
+		}
+		path, _ := record.Get("path")
+		baconPath := path.(neo4j.Path)
+		var pathElements []BaconSlice
+		pathNodes := baconPath.Nodes
+		for _, node := range pathNodes {
+			name, found := node.Props["name"]
+			if !found {
+				name = node.Props["title"]
+			}
+			pathElements = append(pathElements, BaconSlice{
+				Type: node.Labels[0],
+				Name: name.(string),
+			})
+		}
+		return pathElements, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return results.([]BaconSlice), nil
 }

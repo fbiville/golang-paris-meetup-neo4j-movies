@@ -17,8 +17,12 @@ type config struct {
 }
 
 func (c *config) createDriver() (neo4j.Driver, error) {
-	// TODO
-	return nil, fmt.Errorf("TODO")
+	driver, err := neo4j.NewDriver(c.Uri, neo4j.BasicAuth(c.Username, c.Password, ""))
+	if err != nil {
+		return nil, err
+	}
+	err = driver.VerifyConnectivity()
+	return driver, err
 }
 
 func main() {
